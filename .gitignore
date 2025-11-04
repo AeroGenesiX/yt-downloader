@@ -44,3 +44,9 @@ Thumbs.db
 
 # Environment
 .env
+
+# Cookies (security sensitive)
+cookies/
+*.txt
+!requirements.txt
+!runtime.txt

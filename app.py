@@ -93,7 +93,17 @@ def get_video_info():
         return jsonify(response)
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        error_msg = str(e)
+
+        # Check for bot detection error
+        if 'Sign in to confirm' in error_msg or 'bot' in error_msg.lower():
+            return jsonify({
+                'error': 'YouTube bot detection triggered. Server needs cookies configured.',
+                'details': 'The server administrator needs to add YouTube cookies. See DEPLOY-WITH-COOKIES.md for setup instructions.',
+                'technical': error_msg
+            }), 503
+
+        return jsonify({'error': error_msg}), 400
 
 
 @app.route('/api/list-formats', methods=['POST'])

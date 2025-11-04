@@ -21,6 +21,57 @@ class YouTubeDownloader:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
+        # Setup cookies - check environment variable first, then file
+        self._setup_cookies()
+
+    def _setup_cookies(self):
+        """Setup cookies from environment variable or file"""
+        import base64
+
+        # Method 1: Check for base64-encoded cookies in environment
+        cookies_env = os.environ.get('YOUTUBE_COOKIES_BASE64')
+        if cookies_env:
+            try:
+                cookies_dir = Path(__file__).parent / 'cookies'
+                cookies_dir.mkdir(exist_ok=True)
+                self.cookies_file = cookies_dir / 'youtube.txt'
+
+                # Decode and write cookies
+                cookies_content = base64.b64decode(cookies_env).decode('utf-8')
+                self.cookies_file.write_text(cookies_content)
+                return
+            except Exception as e:
+                print(f"Warning: Failed to load cookies from environment: {e}")
+
+        # Method 2: Check for direct cookies content in environment
+        cookies_content = os.environ.get('YOUTUBE_COOKIES')
+        if cookies_content:
+            try:
+                cookies_dir = Path(__file__).parent / 'cookies'
+                cookies_dir.mkdir(exist_ok=True)
+                self.cookies_file = cookies_dir / 'youtube.txt'
+                self.cookies_file.write_text(cookies_content)
+                return
+            except Exception as e:
+                print(f"Warning: Failed to load cookies from environment: {e}")
+
+        # Method 3: Use existing file
+        self.cookies_file = Path(__file__).parent / 'cookies' / 'youtube.txt'
+
+    def _get_base_opts(self) -> Dict:
+        """Get base yt-dlp options with cookies and anti-bot measures"""
+        opts = {
+            # Anti-bot measures
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+        }
+
+        # Add cookies if file exists
+        if self.cookies_file.exists():
+            opts['cookiefile'] = str(self.cookies_file)
+
+        return opts
+
     def get_video_info(self, url: str) -> Dict:
         """
         Get information about the video without downloading
@@ -31,10 +82,11 @@ class YouTubeDownloader:
         Returns:
             Dictionary with video information
         """
-        ydl_opts = {
+        ydl_opts = self._get_base_opts()
+        ydl_opts.update({
             'quiet': True,
             'no_warnings': True,
-        }
+        })
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -114,14 +166,15 @@ class YouTubeDownloader:
         else:
             format_string = "bestvideo+bestaudio/best"
 
-        # Base options
-        ydl_opts = {
+        # Base options with anti-bot measures
+        ydl_opts = self._get_base_opts()
+        ydl_opts.update({
             'format': format_string,
             'outtmpl': str(self.output_dir / (output_filename or '%(title)s.%(ext)s')),
             'progress_hooks': [self._progress_hook],
             'quiet': False,
             'no_warnings': False,
-        }
+        })
 
         # Add audio extraction for audio-only
         if format_type == "audio":

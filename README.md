@@ -30,6 +30,15 @@ For production or heavy usage:
 - **[Quick Start Deploy](QUICKSTART-DEPLOY.md)** - Multiple paid options
 - **[Full Deployment Guide](DEPLOYMENT.md)** - Complete guide for VPS, Docker, and more
 
+### 🍪 Important: YouTube Cookies Required
+
+To avoid YouTube bot detection on deployed apps:
+- **[Cookies Quick Guide](COOKIES-QUICK-GUIDE.md)** 🚀 - 5-minute setup for web deployment
+- **[Deploy with Cookies](DEPLOY-WITH-COOKIES.md)** 📖 - Complete deployment guide
+- **[YouTube Bot Fix](YOUTUBE-BOT-FIX.md)** 🔧 - Local development setup
+
+**For web users:** They don't need to do anything! You (server owner) configure cookies once.
+
 ## Features
 
 - **Download videos in multiple qualities**: Choose from best, 720p, 1080p, 4K, etc.
