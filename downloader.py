@@ -32,14 +32,12 @@ class YouTubeDownloader:
         cookies_env = os.environ.get('YOUTUBE_COOKIES_BASE64') or os.environ.get('YT_COOKIES_B64')
         if cookies_env:
             try:
-                cookies_dir = Path(__file__).parent / 'cookies'
-                cookies_dir.mkdir(exist_ok=True)
-                self.cookies_file = cookies_dir / 'youtube.txt'
+                self.cookies_file = Path(__file__).parent / 'youtube.txt'
 
                 # Decode and write cookies
                 cookies_content = base64.b64decode(cookies_env).decode('utf-8')
                 self.cookies_file.write_text(cookies_content)
-                print(f"✓ Cookies loaded from YOUTUBE_COOKIES_BASE64 environment variable")
+                print(f"✓ Cookies loaded from environment variable")
                 return
             except Exception as e:
                 print(f"Warning: Failed to load cookies from environment: {e}")
@@ -48,9 +46,7 @@ class YouTubeDownloader:
         cookies_content = os.environ.get('YOUTUBE_COOKIES')
         if cookies_content:
             try:
-                cookies_dir = Path(__file__).parent / 'cookies'
-                cookies_dir.mkdir(exist_ok=True)
-                self.cookies_file = cookies_dir / 'youtube.txt'
+                self.cookies_file = Path(__file__).parent / 'youtube.txt'
                 self.cookies_file.write_text(cookies_content)
                 print(f"✓ Cookies loaded from YOUTUBE_COOKIES environment variable")
                 return
@@ -58,7 +54,7 @@ class YouTubeDownloader:
                 print(f"Warning: Failed to load cookies from environment: {e}")
 
         # Method 3: Use existing file
-        self.cookies_file = Path(__file__).parent / 'cookies' / 'youtube.txt'
+        self.cookies_file = Path(__file__).parent / 'youtube.txt'
         if self.cookies_file.exists():
             print(f"✓ Cookies file found: {self.cookies_file}")
         else:
