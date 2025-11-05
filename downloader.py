@@ -90,11 +90,12 @@ class YouTubeDownloader:
             'http_chunk_size': 10485760,  # 10MB chunks (YouTube's limit)
             'noprogress': False,  # We want progress updates
 
-            # YouTube-specific optimizations to avoid trying multiple clients
+            # YouTube-specific optimizations
+            # Note: Removed restrictive player_client settings to ensure compatibility
+            # with all video types (some videos only work with certain clients)
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],  # Try android first (faster), fallback to web
-                    'skip': ['hls'],  # Skip HLS but keep DASH as fallback for some videos
+                    'skip': ['hls'],  # Only skip HLS, allow all clients
                 }
             },
         }
@@ -222,55 +223,57 @@ class YouTubeDownloader:
             else:
                 # Custom quality (e.g., "720p", "1080p") with multiple fallbacks
                 height = quality.replace('p', '')
+                # IMPORTANT: Try single-file formats FIRST (for videos without separate streams)
                 if ext == 'mp4':
                     format_string = (
+                        f"best[height<={height}][ext=mp4]/"  # Try single mp4 file first
+                        f"best[height<={height}]/"
                         f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/"
                         f"bestvideo[height<={height}][ext=mp4]+bestaudio/"
                         f"bestvideo[height<={height}]+bestaudio[ext=m4a]/"
                         f"bestvideo[height<={height}]+bestaudio/"
-                        f"best[height<={height}][ext=mp4]/"
-                        f"best[height<={height}]/"
                         "best[ext=mp4]/"
                         "best"
                     )
                 elif ext == 'webm':
                     format_string = (
+                        f"best[height<={height}][ext=webm]/"  # Try single webm file first
+                        f"best[height<={height}]/"
                         f"bestvideo[height<={height}][ext=webm]+bestaudio[ext=webm]/"
                         f"bestvideo[height<={height}][ext=webm]+bestaudio/"
                         f"bestvideo[height<={height}]+bestaudio/"
-                        f"best[height<={height}][ext=webm]/"
-                        f"best[height<={height}]/"
                         "best[ext=webm]/"
                         "best"
                     )
                 else:  # mkv or fallback
                     format_string = (
+                        f"best[height<={height}]/"  # Try single file first
                         f"bestvideo[height<={height}]+bestaudio/"
-                        f"best[height<={height}]/"
                         "best"
                     )
         else:
             ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
             # Use more permissive format strings with better fallbacks
+            # IMPORTANT: Try single-file formats FIRST (for videos without separate streams)
             if ext == 'mp4':
                 format_string = (
+                    "best[ext=mp4]/"  # Try single mp4 file first
                     "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
                     "bestvideo[ext=mp4]+bestaudio/"
                     "bestvideo+bestaudio[ext=m4a]/"
                     "bestvideo+bestaudio/"
-                    "best[ext=mp4]/"
                     "best"
                 )
             elif ext == 'webm':
                 format_string = (
+                    "best[ext=webm]/"  # Try single webm file first
                     "bestvideo[ext=webm]+bestaudio[ext=webm]/"
                     "bestvideo[ext=webm]+bestaudio/"
                     "bestvideo+bestaudio/"
-                    "best[ext=webm]/"
                     "best"
                 )
             else:
-                format_string = "bestvideo+bestaudio/best"
+                format_string = "best/bestvideo+bestaudio"
 
         # Base options with anti-bot measures
         ydl_opts = self._get_base_opts()
