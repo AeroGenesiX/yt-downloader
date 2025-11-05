@@ -4,8 +4,9 @@ Flask web application for YouTube Downloader
 """
 # IMPORTANT: eventlet monkey patching MUST be the first thing that happens
 # This is required for gunicorn with eventlet worker
+# Note: We exclude 'os' module to prevent conflicts with gunicorn's signal handling
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(os=False)
 
 from flask import Flask, render_template, request, jsonify, send_file, session
 from flask_socketio import SocketIO, emit, join_room
@@ -465,9 +466,13 @@ def handle_connect():
 
 
 @socketio.on('disconnect')
-def handle_disconnect():
+def handle_disconnect(*args, **kwargs):
     """Handle client disconnection"""
-    logger.info(f'Client disconnected: {request.sid}')
+    # Accept optional arguments to handle various disconnect scenarios
+    try:
+        logger.info(f'Client disconnected: {request.sid}')
+    except Exception as e:
+        logger.debug(f'Client disconnected (sid unavailable): {e}')
 
 
 @socketio.on('join')
