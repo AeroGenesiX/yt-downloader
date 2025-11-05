@@ -204,30 +204,30 @@
                                 <!-- Dark overlay for unselected regions -->
                                 <div class="timeline-overlay-left" id="overlayLeft"></div>
                                 <div class="timeline-overlay-right" id="overlayRight"></div>
+                            </div>
 
-                                <!-- Selection with handles -->
-                                <div class="timeline-selection" id="timelineSelection">
-                                    <div class="timeline-handle timeline-handle-start" id="handleStart">
-                                        <div class="handle-grip"></div>
-                                        <div class="handle-tooltip" id="tooltipStart">0:00</div>
-                                        <!-- Live frame preview -->
-                                        <div class="frame-preview" id="framePreviewStart">
-                                            <img class="frame-preview-img" id="framePreviewImgStart" src="" alt="Preview">
-                                            <div class="frame-preview-time" id="framePreviewTimeStart">0:00</div>
-                                        </div>
+                            <!-- Selection with handles - moved outside timeline-track to prevent clipping -->
+                            <div class="timeline-selection" id="timelineSelection">
+                                <div class="timeline-handle timeline-handle-start" id="handleStart">
+                                    <div class="handle-grip"></div>
+                                    <div class="handle-tooltip" id="tooltipStart">0:00</div>
+                                    <!-- Live frame preview -->
+                                    <div class="frame-preview" id="framePreviewStart">
+                                        <img class="frame-preview-img" id="framePreviewImgStart" src="" alt="Preview">
+                                        <div class="frame-preview-time" id="framePreviewTimeStart">0:00</div>
                                     </div>
-                                    <div class="timeline-selected-region">
-                                        <div class="selection-border-top"></div>
-                                        <div class="selection-border-bottom"></div>
-                                    </div>
-                                    <div class="timeline-handle timeline-handle-end" id="handleEnd">
-                                        <div class="handle-grip"></div>
-                                        <div class="handle-tooltip" id="tooltipEnd">0:00</div>
-                                        <!-- Live frame preview -->
-                                        <div class="frame-preview" id="framePreviewEnd">
-                                            <img class="frame-preview-img" id="framePreviewImgEnd" src="" alt="Preview">
-                                            <div class="frame-preview-time" id="framePreviewTimeEnd">0:00</div>
-                                        </div>
+                                </div>
+                                <div class="timeline-selected-region">
+                                    <div class="selection-border-top"></div>
+                                    <div class="selection-border-bottom"></div>
+                                </div>
+                                <div class="timeline-handle timeline-handle-end" id="handleEnd">
+                                    <div class="handle-grip"></div>
+                                    <div class="handle-tooltip" id="tooltipEnd">0:00</div>
+                                    <!-- Live frame preview -->
+                                    <div class="frame-preview" id="framePreviewEnd">
+                                        <img class="frame-preview-img" id="framePreviewImgEnd" src="" alt="Preview">
+                                        <div class="frame-preview-time" id="framePreviewTimeEnd">0:00</div>
                                     </div>
                                 </div>
                             </div>
