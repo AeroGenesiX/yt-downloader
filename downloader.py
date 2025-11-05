@@ -94,7 +94,7 @@ class YouTubeDownloader:
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],  # Try android first (faster), fallback to web
-                    'skip': ['hls', 'dash'],  # Skip slow protocols if not needed
+                    'skip': ['hls'],  # Skip HLS but keep DASH as fallback for some videos
                 }
             },
         }
@@ -225,15 +225,22 @@ class YouTubeDownloader:
                 if ext == 'mp4':
                     format_string = (
                         f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/"
+                        f"bestvideo[height<={height}][ext=mp4]+bestaudio/"
+                        f"bestvideo[height<={height}]+bestaudio[ext=m4a]/"
                         f"bestvideo[height<={height}]+bestaudio/"
+                        f"best[height<={height}][ext=mp4]/"
                         f"best[height<={height}]/"
+                        "best[ext=mp4]/"
                         "best"
                     )
                 elif ext == 'webm':
                     format_string = (
                         f"bestvideo[height<={height}][ext=webm]+bestaudio[ext=webm]/"
+                        f"bestvideo[height<={height}][ext=webm]+bestaudio/"
                         f"bestvideo[height<={height}]+bestaudio/"
+                        f"best[height<={height}][ext=webm]/"
                         f"best[height<={height}]/"
+                        "best[ext=webm]/"
                         "best"
                     )
                 else:  # mkv or fallback
@@ -244,10 +251,24 @@ class YouTubeDownloader:
                     )
         else:
             ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+            # Use more permissive format strings with better fallbacks
             if ext == 'mp4':
-                format_string = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+                format_string = (
+                    "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
+                    "bestvideo[ext=mp4]+bestaudio/"
+                    "bestvideo+bestaudio[ext=m4a]/"
+                    "bestvideo+bestaudio/"
+                    "best[ext=mp4]/"
+                    "best"
+                )
             elif ext == 'webm':
-                format_string = "bestvideo[ext=webm]+bestaudio[ext=webm]/bestvideo+bestaudio/best"
+                format_string = (
+                    "bestvideo[ext=webm]+bestaudio[ext=webm]/"
+                    "bestvideo[ext=webm]+bestaudio/"
+                    "bestvideo+bestaudio/"
+                    "best[ext=webm]/"
+                    "best"
+                )
             else:
                 format_string = "bestvideo+bestaudio/best"
 
@@ -259,6 +280,10 @@ class YouTubeDownloader:
             'progress_hooks': [self._progress_hook],
             'quiet': False,
             'no_warnings': False,
+            # Additional options to handle YouTube's format restrictions
+            'allow_unplayable_formats': False,  # Skip unplayable formats
+            'check_formats': 'selected',  # Only check selected format
+            'ignoreerrors': False,  # Don't ignore errors, but fallback will handle them
         })
 
         # Add audio extraction for audio-only
@@ -348,6 +373,27 @@ class YouTubeDownloader:
                     final_filename = ydl.prepare_filename(info)
 
                 return final_filename
+        except yt_dlp.utils.DownloadError as e:
+            error_msg = str(e)
+            # If format not available, try with simple "best" format as last resort
+            if "Requested format is not available" in error_msg or "No video formats found" in error_msg:
+                print(f"⚠ Requested format not available, retrying with best available format...")
+                ydl_opts['format'] = 'best'  # Simplest fallback
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(url, download=True)
+                        base_filename = ydl.prepare_filename(info)
+                        base_filename = base_filename.rsplit('.', 1)[0]
+                        if format_type == "audio":
+                            audio_ext = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+                            final_filename = base_filename + f'.{audio_ext}'
+                        else:
+                            final_filename = ydl.prepare_filename(info)
+                        return final_filename
+                except Exception as retry_error:
+                    raise Exception(f"Download failed even with best format fallback: {str(retry_error)}")
+            else:
+                raise Exception(f"Download failed: {error_msg}")
         except Exception as e:
             raise Exception(f"Download failed: {str(e)}")
 
