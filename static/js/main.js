@@ -298,9 +298,13 @@ function updateQualityOptions(formatType) {
             <option value="m4a">M4A/AAC (Best Quality)</option>
             <option value="opus">Opus (Smallest Size)</option>
             <option value="flac">FLAC (Lossless)</option>
+            <option value="wav">WAV (Uncompressed)</option>
+            <option value="ogg">OGG (Vorbis)</option>
+            <option value="aac">AAC (Advanced)</option>
+            <option value="wma">WMA (Windows)</option>
         `;
         // Try to restore format if it was an audio format
-        if (['mp3', 'm4a', 'opus', 'flac'].includes(currentFormatValue)) {
+        if (['mp3', 'm4a', 'opus', 'flac', 'wav', 'ogg', 'aac', 'wma'].includes(currentFormatValue)) {
             formatSelect.value = currentFormatValue;
         } else {
             formatSelect.value = 'mp3';
@@ -329,9 +333,13 @@ function updateQualityOptions(formatType) {
             <option value="mp4">MP4 (Most Compatible)</option>
             <option value="webm">WebM (Smaller Size)</option>
             <option value="mkv">MKV (Best Quality)</option>
+            <option value="avi">AVI (Universal)</option>
+            <option value="mov">MOV (QuickTime)</option>
+            <option value="flv">FLV (Flash Video)</option>
+            <option value="3gp">3GP (Mobile)</option>
         `;
         // Try to restore format if it was a video format
-        if (['mp4', 'webm', 'mkv'].includes(currentFormatValue)) {
+        if (['mp4', 'webm', 'mkv', 'avi', 'mov', 'flv', '3gp'].includes(currentFormatValue)) {
             formatSelect.value = currentFormatValue;
         } else {
             formatSelect.value = 'mp4';

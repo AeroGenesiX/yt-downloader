@@ -223,11 +223,17 @@ class YouTubeDownloader:
         """
         # Build format string based on type with better fallbacks
         # Priority: Combined formats > Merged DASH > HLS as last resort
+
+        # Supported video formats
+        VALID_VIDEO_FORMATS = ['mp4', 'webm', 'mkv', 'avi', 'mov', 'flv', '3gp']
+        # Supported audio formats
+        VALID_AUDIO_FORMATS = ['mp3', 'm4a', 'opus', 'flac', 'wav', 'ogg', 'aac', 'wma']
+
         if format_type == "audio":
             format_string = "bestaudio/best"
         elif format_type == "video":
             # Map common formats to their extensions
-            ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+            ext = format if format in VALID_VIDEO_FORMATS else 'mp4'
 
             if quality == "best":
                 # UPDATED: More permissive format selection with HLS fallbacks
@@ -244,7 +250,7 @@ class YouTubeDownloader:
                     f"bestvideo*[height<={height}]+bestaudio/best[height<={height}]/best"
                 )
         else:
-            ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+            ext = format if format in VALID_VIDEO_FORMATS else 'mp4'
             # UPDATED: Simplified format selection - let yt-dlp pick best available
             format_string = "bestvideo*+bestaudio/best"
 
@@ -261,7 +267,7 @@ class YouTubeDownloader:
 
         # Set merge output format for video (when merging separate video+audio streams)
         if format_type == "video":
-            video_format = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+            video_format = format if format in VALID_VIDEO_FORMATS else 'mp4'
             ydl_opts['merge_output_format'] = video_format
 
         # Add audio extraction for audio-only
@@ -273,12 +279,15 @@ class YouTubeDownloader:
                 audio_quality = '192'  # Fallback to 192 if invalid
 
             # Determine codec based on format
-            codec = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+            codec = format if format in VALID_AUDIO_FORMATS else 'mp3'
+
+            # Special handling for lossless/uncompressed formats
+            lossless_formats = ['flac', 'wav']
 
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': codec,
-                'preferredquality': audio_quality if codec != 'flac' else '0',  # FLAC is lossless, no quality setting
+                'preferredquality': '0' if codec in lossless_formats else audio_quality,  # Lossless formats don't use quality setting
             }]
 
         # Add custom duration trimming if specified
@@ -303,13 +312,16 @@ class YouTubeDownloader:
                     audio_quality = '192'  # Fallback to 192 if invalid
 
                 # Determine codec based on format
-                codec = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+                codec = format if format in VALID_AUDIO_FORMATS else 'mp3'
+
+                # Special handling for lossless/uncompressed formats
+                lossless_formats = ['flac', 'wav']
 
                 # Replace the audio extractor with one that includes trimming
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': codec,
-                    'preferredquality': audio_quality if codec != 'flac' else '0',  # FLAC is lossless, no quality setting
+                    'preferredquality': '0' if codec in lossless_formats else audio_quality,
                 }]
             else:
                 # For video with trimming, no additional postprocessor needed
@@ -326,10 +338,10 @@ class YouTubeDownloader:
 
                 # Determine final extension based on format type and postprocessors
                 if format_type == "audio":
-                    audio_ext = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+                    audio_ext = format if format in VALID_AUDIO_FORMATS else 'mp3'
                     final_filename = base_filename + f'.{audio_ext}'
                 elif format_type == "video" or (start_time or end_time):
-                    video_ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+                    video_ext = format if format in VALID_VIDEO_FORMATS else 'mp4'
                     final_filename = base_filename + f'.{video_ext}'
                 else:
                     # Use original extension
@@ -353,7 +365,7 @@ class YouTubeDownloader:
                         base_filename = ydl.prepare_filename(info)
                         base_filename = base_filename.rsplit('.', 1)[0]
                         if format_type == "audio":
-                            audio_ext = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+                            audio_ext = format if format in VALID_AUDIO_FORMATS else 'mp3'
                             final_filename = base_filename + f'.{audio_ext}'
                         else:
                             final_filename = ydl.prepare_filename(info)
