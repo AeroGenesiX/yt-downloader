@@ -2,6 +2,11 @@
 """
 Flask web application for YouTube Downloader
 """
+# IMPORTANT: eventlet monkey patching MUST be the first thing that happens
+# This is required for gunicorn with eventlet worker
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, render_template, request, jsonify, send_file, session
 from flask_socketio import SocketIO, emit, join_room
 import os
@@ -25,7 +30,7 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     ping_timeout=120,  # 2 minutes before considering connection dead
     ping_interval=25,  # Send ping every 25 seconds to keep connection alive
-    async_mode='threading',
+    async_mode='eventlet',  # Use eventlet for production with gunicorn
     engineio_logger=False,
     logger=False,
     # Allow both websocket and polling, with polling as fallback
