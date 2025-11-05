@@ -259,6 +259,11 @@ class YouTubeDownloader:
             # Let yt-dlp handle format selection naturally without extra restrictions
         })
 
+        # Set merge output format for video (when merging separate video+audio streams)
+        if format_type == "video":
+            video_format = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+            ydl_opts['merge_output_format'] = video_format
+
         # Add audio extraction for audio-only
         if format_type == "audio":
             # Determine audio quality - use numeric bitrate if provided, else default to 320 for "best"
@@ -307,24 +312,9 @@ class YouTubeDownloader:
                     'preferredquality': audio_quality if codec != 'flac' else '0',  # FLAC is lossless, no quality setting
                 }]
             else:
-                # For video with trimming
-                video_format = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
-                postprocessors = ydl_opts.get('postprocessors', [])
-                postprocessors.append({
-                    'key': 'FFmpegVideoConvertor',
-                    'preferedformat': video_format,
-                })
-                ydl_opts['postprocessors'] = postprocessors
-
-        # Merge output for video+audio (only if no trimming was applied)
-        elif format_type == "video":
-            video_format = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
-            postprocessors = ydl_opts.get('postprocessors', [])
-            postprocessors.append({
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': video_format,
-            })
-            ydl_opts['postprocessors'] = postprocessors
+                # For video with trimming, no additional postprocessor needed
+                # The merge_output_format setting will handle the output format
+                pass
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
