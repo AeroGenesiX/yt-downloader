@@ -141,6 +141,7 @@ class YouTubeDownloader:
         self,
         url: str,
         quality: str = "best",
+        format: str = "mp4",
         format_type: str = "video",
         start_time: Optional[str] = None,
         end_time: Optional[str] = None,
@@ -152,6 +153,7 @@ class YouTubeDownloader:
         Args:
             url: YouTube video URL
             quality: Quality setting (best, worst, or specific format code)
+            format: Container format (mp4, webm, mkv for video; mp3, m4a, opus, flac for audio)
             format_type: Type to download ('video', 'audio', or 'both')
             start_time: Start time in format HH:MM:SS or seconds
             end_time: End time in format HH:MM:SS or seconds
@@ -164,22 +166,50 @@ class YouTubeDownloader:
         if format_type == "audio":
             format_string = "bestaudio/best"
         elif format_type == "video":
+            # Map common formats to their extensions
+            ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+
             if quality == "best":
-                # Try best video+audio, fallback to best single file
-                format_string = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+                # Try best video+audio with preferred format, fallback to best single file
+                if ext == 'mp4':
+                    format_string = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+                elif ext == 'webm':
+                    format_string = "bestvideo[ext=webm]+bestaudio[ext=webm]/bestvideo+bestaudio/best"
+                else:  # mkv or fallback
+                    format_string = "bestvideo+bestaudio/best"
             elif quality == "worst":
                 format_string = "worstvideo+worstaudio/worst"
             else:
                 # Custom quality (e.g., "720p", "1080p") with multiple fallbacks
                 height = quality.replace('p', '')
-                format_string = (
-                    f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/"
-                    f"bestvideo[height<={height}]+bestaudio/"
-                    f"best[height<={height}]/"
-                    "best"
-                )
+                if ext == 'mp4':
+                    format_string = (
+                        f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/"
+                        f"bestvideo[height<={height}]+bestaudio/"
+                        f"best[height<={height}]/"
+                        "best"
+                    )
+                elif ext == 'webm':
+                    format_string = (
+                        f"bestvideo[height<={height}][ext=webm]+bestaudio[ext=webm]/"
+                        f"bestvideo[height<={height}]+bestaudio/"
+                        f"best[height<={height}]/"
+                        "best"
+                    )
+                else:  # mkv or fallback
+                    format_string = (
+                        f"bestvideo[height<={height}]+bestaudio/"
+                        f"best[height<={height}]/"
+                        "best"
+                    )
         else:
-            format_string = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+            ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+            if ext == 'mp4':
+                format_string = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+            elif ext == 'webm':
+                format_string = "bestvideo[ext=webm]+bestaudio[ext=webm]/bestvideo+bestaudio/best"
+            else:
+                format_string = "bestvideo+bestaudio/best"
 
         # Base options with anti-bot measures
         ydl_opts = self._get_base_opts()
@@ -193,10 +223,19 @@ class YouTubeDownloader:
 
         # Add audio extraction for audio-only
         if format_type == "audio":
+            # Determine audio quality - use numeric bitrate if provided, else default to 320 for "best"
+            audio_quality = '320' if quality == 'best' else quality
+            # Ensure it's a valid bitrate value
+            if not audio_quality.isdigit():
+                audio_quality = '192'  # Fallback to 192 if invalid
+
+            # Determine codec based on format
+            codec = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
+                'preferredcodec': codec,
+                'preferredquality': audio_quality if codec != 'flac' else '0',  # FLAC is lossless, no quality setting
             }]
 
         # Add custom duration trimming if specified
@@ -214,27 +253,38 @@ class YouTubeDownloader:
 
             # For audio with trimming, we need to re-encode
             if format_type == "audio":
+                # Determine audio quality - use numeric bitrate if provided, else default to 320 for "best"
+                audio_quality = '320' if quality == 'best' else quality
+                # Ensure it's a valid bitrate value
+                if not audio_quality.isdigit():
+                    audio_quality = '192'  # Fallback to 192 if invalid
+
+                # Determine codec based on format
+                codec = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+
                 # Replace the audio extractor with one that includes trimming
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
+                    'preferredcodec': codec,
+                    'preferredquality': audio_quality if codec != 'flac' else '0',  # FLAC is lossless, no quality setting
                 }]
             else:
                 # For video with trimming
+                video_format = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
                 postprocessors = ydl_opts.get('postprocessors', [])
                 postprocessors.append({
                     'key': 'FFmpegVideoConvertor',
-                    'preferedformat': 'mp4',
+                    'preferedformat': video_format,
                 })
                 ydl_opts['postprocessors'] = postprocessors
 
         # Merge output for video+audio (only if no trimming was applied)
         elif format_type == "video":
+            video_format = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
             postprocessors = ydl_opts.get('postprocessors', [])
             postprocessors.append({
                 'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4',
+                'preferedformat': video_format,
             })
             ydl_opts['postprocessors'] = postprocessors
 
@@ -248,9 +298,11 @@ class YouTubeDownloader:
 
                 # Determine final extension based on format type and postprocessors
                 if format_type == "audio":
-                    final_filename = base_filename + '.mp3'
+                    audio_ext = format if format in ['mp3', 'm4a', 'opus', 'flac'] else 'mp3'
+                    final_filename = base_filename + f'.{audio_ext}'
                 elif format_type == "video" or (start_time or end_time):
-                    final_filename = base_filename + '.mp4'
+                    video_ext = format if format in ['mp4', 'webm', 'mkv'] else 'mp4'
+                    final_filename = base_filename + f'.{video_ext}'
                 else:
                     # Use original extension
                     final_filename = ydl.prepare_filename(info)
@@ -308,10 +360,16 @@ class YouTubeDownloader:
             ydl_opts['playlistend'] = end_index
 
         if format_type == "audio":
+            # Determine audio quality - use numeric bitrate if provided, else default to 320 for "best"
+            audio_quality = '320' if quality == 'best' else quality
+            # Ensure it's a valid bitrate value
+            if not audio_quality.isdigit():
+                audio_quality = '192'  # Fallback to 192 if invalid
+
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '192',
+                'preferredquality': audio_quality,
             }]
 
         downloaded_files = []

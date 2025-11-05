@@ -166,6 +166,7 @@ def start_download():
         data = request.get_json()
         url = data.get('url')
         quality = data.get('quality', 'best')
+        format = data.get('format', 'mp4')
         format_type = data.get('format_type', 'video')
         start_time = data.get('start_time')
         end_time = data.get('end_time')
@@ -192,6 +193,7 @@ def start_download():
                 filename = downloader.download(
                     url=url,
                     quality=quality,
+                    format=format,
                     format_type=format_type,
                     start_time=start_time if start_time else None,
                     end_time=end_time if end_time else None
@@ -274,6 +276,9 @@ def download_file(download_id):
         base = filepath.rsplit('.', 1)[0]
         possible_files = [
             base + '.mp3',
+            base + '.m4a',
+            base + '.opus',
+            base + '.flac',
             base + '.mp4',
             base + '.webm',
             base + '.mkv'

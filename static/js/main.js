@@ -25,6 +25,7 @@ const videoDuration = document.getElementById('videoDuration');
 
 const formatTypeButtons = document.querySelectorAll('.btn-option');
 const qualitySelect = document.getElementById('qualitySelect');
+const formatSelect = document.getElementById('formatSelect');
 const startTimeInput = document.getElementById('startTime');
 const endTimeInput = document.getElementById('endTime');
 const downloadBtn = document.getElementById('downloadBtn');
@@ -104,6 +105,9 @@ formatTypeButtons.forEach(btn => {
         formatTypeButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedFormatType = btn.dataset.type;
+
+        // Update quality options based on format type
+        updateQualityOptions(selectedFormatType);
     });
 });
 
@@ -135,6 +139,70 @@ document.addEventListener('touchend', stopDragging);
 startTimeInput.addEventListener('input', syncTimelineFromInputs);
 endTimeInput.addEventListener('input', syncTimelineFromInputs);
 
+// Quality and Format Options Update
+function updateQualityOptions(formatType) {
+    const currentQualityValue = qualitySelect.value;
+    const currentFormatValue = formatSelect.value;
+
+    if (formatType === 'audio') {
+        // Audio quality options (bitrate-based)
+        qualitySelect.innerHTML = `
+            <option value="best">Best Quality (320kbps)</option>
+            <option value="320">High (320kbps)</option>
+            <option value="256">Medium-High (256kbps)</option>
+            <option value="192">Medium (192kbps)</option>
+            <option value="128">Standard (128kbps)</option>
+            <option value="96">Low (96kbps)</option>
+        `;
+        qualitySelect.value = 'best';
+
+        // Audio format options
+        formatSelect.innerHTML = `
+            <option value="mp3">MP3 (Most Compatible)</option>
+            <option value="m4a">M4A/AAC (Best Quality)</option>
+            <option value="opus">Opus (Smallest Size)</option>
+            <option value="flac">FLAC (Lossless)</option>
+        `;
+        // Try to restore format if it was an audio format
+        if (['mp3', 'm4a', 'opus', 'flac'].includes(currentFormatValue)) {
+            formatSelect.value = currentFormatValue;
+        } else {
+            formatSelect.value = 'mp3';
+        }
+    } else {
+        // Video quality options (resolution-based)
+        qualitySelect.innerHTML = `
+            <option value="best">Best Quality</option>
+            <option value="2160p">4K (2160p)</option>
+            <option value="1440p">2K (1440p)</option>
+            <option value="1080p">1080p (Full HD)</option>
+            <option value="720p">720p (HD)</option>
+            <option value="480p">480p</option>
+            <option value="360p">360p</option>
+            <option value="worst">Lowest Quality</option>
+        `;
+        // Try to restore previous value if it was a video quality
+        if (['best', '2160p', '1440p', '1080p', '720p', '480p', '360p', 'worst'].includes(currentQualityValue)) {
+            qualitySelect.value = currentQualityValue;
+        } else {
+            qualitySelect.value = 'best';
+        }
+
+        // Video format options
+        formatSelect.innerHTML = `
+            <option value="mp4">MP4 (Most Compatible)</option>
+            <option value="webm">WebM (Smaller Size)</option>
+            <option value="mkv">MKV (Best Quality)</option>
+        `;
+        // Try to restore format if it was a video format
+        if (['mp4', 'webm', 'mkv'].includes(currentFormatValue)) {
+            formatSelect.value = currentFormatValue;
+        } else {
+            formatSelect.value = 'mp4';
+        }
+    }
+}
+
 // Timeline Functions
 function initializeTimeline(durationSeconds) {
     videoDurationSeconds = durationSeconds;
@@ -147,31 +215,82 @@ function initializeTimeline(durationSeconds) {
     timelineTotalDuration.textContent = formatTime(durationSeconds);
     updateTimelineDisplay();
 
-    // Generate time markers
-    generateTimeMarkers(durationSeconds);
+    // Generate time labels below timeline
+    generateTimeLabels(durationSeconds);
+
+    // Load video thumbnails if available
+    loadVideoThumbnails();
 }
 
-function generateTimeMarkers(durationSeconds) {
-    const markers = document.getElementById('timelineMarkers');
-    markers.innerHTML = '';
+function generateTimeLabels(durationSeconds) {
+    const labelsContainer = document.getElementById('timelineTimeLabels');
+    labelsContainer.innerHTML = '';
 
-    // Generate markers at intervals
-    const numMarkers = Math.min(10, Math.floor(durationSeconds / 30));
+    // Create start label
+    const startLabel = document.createElement('span');
+    startLabel.textContent = '0:00';
+    labelsContainer.appendChild(startLabel);
 
-    for (let i = 1; i < numMarkers; i++) {
-        const percent = (i / numMarkers) * 100;
-        const timeSeconds = (durationSeconds * i) / numMarkers;
-
-        const marker = document.createElement('div');
-        marker.className = 'timeline-marker';
-        marker.style.left = percent + '%';
-
-        const label = document.createElement('div');
-        label.className = 'timeline-marker-label';
+    // Create middle labels
+    const numLabels = Math.min(3, Math.floor(durationSeconds / 60)); // Show up to 3 middle labels
+    for (let i = 1; i <= numLabels; i++) {
+        const timeSeconds = (durationSeconds * i) / (numLabels + 1);
+        const label = document.createElement('span');
         label.textContent = formatTime(timeSeconds);
-        marker.appendChild(label);
+        labelsContainer.appendChild(label);
+    }
 
-        markers.appendChild(marker);
+    // Create end label
+    const endLabel = document.createElement('span');
+    endLabel.textContent = formatTime(durationSeconds);
+    labelsContainer.appendChild(endLabel);
+}
+
+function loadVideoThumbnails() {
+    const thumbnailsContainer = document.getElementById('timelineThumbnails');
+    const videoId = currentVideoInfo ? currentVideoInfo.id : null;
+
+    if (!videoId) return;
+
+    // Create a thumbnail strip using YouTube's maxresdefault
+    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    thumbnailsContainer.style.backgroundImage = `url(${thumbnailUrl})`;
+    thumbnailsContainer.style.backgroundSize = 'cover';
+    thumbnailsContainer.style.backgroundPosition = 'center';
+    thumbnailsContainer.style.opacity = '0.4';
+
+    // Preload frame preview thumbnails
+    preloadFramePreviews(videoId, thumbnailUrl);
+}
+
+function preloadFramePreviews(videoId, thumbnailUrl) {
+    const framePreviewImgStart = document.getElementById('framePreviewImgStart');
+    const framePreviewImgEnd = document.getElementById('framePreviewImgEnd');
+
+    if (framePreviewImgStart) {
+        framePreviewImgStart.src = thumbnailUrl;
+        framePreviewImgStart.onerror = function() {
+            this.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        };
+    }
+
+    if (framePreviewImgEnd) {
+        framePreviewImgEnd.src = thumbnailUrl;
+        framePreviewImgEnd.onerror = function() {
+            this.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        };
+    }
+
+    // Initialize preview times
+    const framePreviewTimeStart = document.getElementById('framePreviewTimeStart');
+    const framePreviewTimeEnd = document.getElementById('framePreviewTimeEnd');
+
+    if (framePreviewTimeStart) {
+        framePreviewTimeStart.textContent = '0:00';
+    }
+
+    if (framePreviewTimeEnd && videoDurationSeconds) {
+        framePreviewTimeEnd.textContent = formatTime(videoDurationSeconds);
     }
 }
 
@@ -180,6 +299,13 @@ function startDragging(e, target) {
     isDragging = true;
     dragTarget = target;
     document.body.style.cursor = 'grabbing';
+
+    // Add dragging class for frame preview
+    if (target === 'start') {
+        handleStart.classList.add('dragging');
+    } else {
+        handleEnd.classList.add('dragging');
+    }
 }
 
 function stopDragging() {
@@ -187,7 +313,48 @@ function stopDragging() {
         isDragging = false;
         dragTarget = null;
         document.body.style.cursor = '';
+
+        // Remove dragging class
+        handleStart.classList.remove('dragging');
+        handleEnd.classList.remove('dragging');
+
+        // Auto-update preview if it's open
+        autoUpdatePreview();
     }
+}
+
+function autoUpdatePreview() {
+    // Only update if preview is visible and player is ready
+    if (!videoPreviewContainer.classList.contains('hidden') && youtubePlayer && playerReady) {
+        // Get current trim times
+        const startPercent = parseFloat(handleStart.style.left) || 0;
+        const endPercent = parseFloat(handleEnd.style.left) || 100;
+
+        previewStartTime = Math.floor((startPercent / 100) * videoDurationSeconds);
+        previewEndTime = Math.floor((endPercent / 100) * videoDurationSeconds);
+
+        console.log('Auto-updating preview to:', previewStartTime, '-', previewEndTime);
+
+        // Add visual feedback
+        showPreviewUpdateFlash();
+
+        // Seek to new start time and play
+        youtubePlayer.seekTo(previewStartTime, true);
+        youtubePlayer.playVideo();
+    }
+}
+
+function showPreviewUpdateFlash() {
+    const playerWrapper = document.querySelector('.video-player-wrapper');
+    if (!playerWrapper) return;
+
+    // Add flash effect
+    playerWrapper.style.boxShadow = '0 0 20px rgba(62, 166, 255, 0.8)';
+    playerWrapper.style.transition = 'box-shadow 0.3s ease';
+
+    setTimeout(() => {
+        playerWrapper.style.boxShadow = '';
+    }, 300);
 }
 
 function onDrag(e) {
@@ -208,15 +375,37 @@ function onDrag(e) {
         // Ensure start doesn't go past end
         if (percent < endPercent - 1) {
             handleStart.style.left = percent + '%';
+            updateFramePreview('start', percent);
         }
     } else if (dragTarget === 'end') {
         // Ensure end doesn't go before start
         if (percent > startPercent + 1) {
             handleEnd.style.left = percent + '%';
+            updateFramePreview('end', percent);
         }
     }
 
     updateTimelineDisplay();
+}
+
+function updateFramePreview(handle, percent) {
+    const timeSeconds = (percent / 100) * videoDurationSeconds;
+    const videoId = currentVideoInfo ? currentVideoInfo.id : null;
+
+    if (!videoId) return;
+
+    // Update time display
+    const timeElement = document.getElementById(`framePreviewTime${handle === 'start' ? 'Start' : 'End'}`);
+
+    if (timeElement) {
+        timeElement.textContent = formatTime(timeSeconds);
+    }
+
+    // Note: We're using the video thumbnail which doesn't change based on timestamp
+    // For a true "scrubbing" effect with different frames, we would need:
+    // 1. YouTube's storyboard API (not publicly available)
+    // 2. Or server-side video processing to extract frames
+    // The current implementation shows the video thumbnail with the timestamp
 }
 
 function updateTimelineDisplay() {
@@ -228,10 +417,16 @@ function updateTimelineDisplay() {
     const endSeconds = (endPercent / 100) * videoDurationSeconds;
     const durationSeconds = endSeconds - startSeconds;
 
-    // Update visual selection
+    // Update visual selection region
     const selectedRegion = timelineSelection.querySelector('.timeline-selected-region');
     selectedRegion.style.left = startPercent + '%';
     selectedRegion.style.width = (endPercent - startPercent) + '%';
+
+    // Update dark overlays
+    const overlayLeft = document.getElementById('overlayLeft');
+    const overlayRight = document.getElementById('overlayRight');
+    overlayLeft.style.width = startPercent + '%';
+    overlayRight.style.width = (100 - endPercent) + '%';
 
     // Update tooltips
     tooltipStart.textContent = formatTime(startSeconds);
@@ -240,14 +435,14 @@ function updateTimelineDisplay() {
     // Update info display
     if (startPercent === 0 && endPercent === 100) {
         selectedDuration.textContent = 'Full Video';
-        trimmingRange.textContent = 'None';
+        trimmingRange.textContent = 'Drag handles to trim';
 
         // Clear manual inputs
         startTimeInput.value = '';
         endTimeInput.value = '';
     } else {
         selectedDuration.textContent = formatTime(durationSeconds);
-        trimmingRange.textContent = `${formatTime(startSeconds)} - ${formatTime(endSeconds)}`;
+        trimmingRange.textContent = `${formatTime(startSeconds)} → ${formatTime(endSeconds)}`;
 
         // Update manual inputs
         startTimeInput.value = formatTimeHHMMSS(startSeconds);
@@ -278,6 +473,9 @@ function syncTimelineFromInputs() {
     }
 
     updateTimelineDisplay();
+
+    // Auto-update preview if it's open
+    autoUpdatePreview();
 }
 
 function parseTimeToSeconds(timeString) {
@@ -386,6 +584,7 @@ function displayVideoInfo(info) {
 async function startDownload() {
     const url = videoUrl.value.trim();
     const quality = qualitySelect.value;
+    const format = formatSelect.value;
     const startTime = startTimeInput.value.trim();
     const endTime = endTimeInput.value.trim();
 
@@ -415,6 +614,7 @@ async function startDownload() {
             body: JSON.stringify({
                 url,
                 quality,
+                format: format,
                 format_type: selectedFormatType,
                 start_time: startTime || null,
                 end_time: endTime || null,
@@ -483,11 +683,15 @@ function reset() {
     startTimeInput.value = '';
     endTimeInput.value = '';
     qualitySelect.value = 'best';
+    formatSelect.value = 'mp4';
 
     // Reset format type
     formatTypeButtons.forEach(btn => btn.classList.remove('active'));
     formatTypeButtons[0].classList.add('active');
     selectedFormatType = 'video';
+
+    // Update options to video defaults
+    updateQualityOptions('video');
 
     // Reset state
     currentDownloadId = null;
@@ -501,6 +705,16 @@ function reset() {
 
     // Enable download button
     downloadBtn.disabled = false;
+
+    // Close preview and cleanup
+    if (!videoPreviewContainer.classList.contains('hidden')) {
+        closePreview();
+    }
+    if (youtubePlayer) {
+        youtubePlayer.destroy();
+        youtubePlayer = null;
+        playerReady = false;
+    }
 
     // Hide all sections except URL input
     videoInfoSection.classList.add('hidden');
@@ -542,6 +756,401 @@ function isValidTimeFormat(time) {
             }
         }
     });
+});
+
+// YouTube Player Preview
+let youtubePlayer = null;
+let playerReady = false;
+let previewStartTime = 0;
+let previewEndTime = 0;
+let previewInterval = null;
+let youtubeAPIReady = false;
+
+const previewBtn = document.getElementById('previewBtn');
+const closePreviewBtn = document.getElementById('closePreviewBtn');
+const replayPreviewBtn = document.getElementById('replayPreviewBtn');
+const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+const setStartPointBtn = document.getElementById('setStartPointBtn');
+const setEndPointBtn = document.getElementById('setEndPointBtn');
+const currentPlaybackTime = document.getElementById('currentPlaybackTime');
+const playbackTimeOverlay = document.getElementById('playbackTimeOverlay');
+
+// Track playback time
+let playbackTimeInterval = null;
+
+// YouTube IFrame API callback
+window.onYouTubeIframeAPIReady = function() {
+    console.log('YouTube IFrame API ready');
+    youtubeAPIReady = true;
+};
+
+function initializeYouTubePlayer(videoId) {
+    console.log('Initializing YouTube player with video ID:', videoId);
+
+    if (youtubePlayer) {
+        console.log('Destroying existing player');
+        youtubePlayer.destroy();
+        youtubePlayer = null;
+        playerReady = false;
+    }
+
+    // Make sure the container exists and is visible
+    const playerElement = document.getElementById('youtubePlayer');
+    if (!playerElement) {
+        console.error('YouTube player element not found!');
+        return;
+    }
+
+    try {
+        youtubePlayer = new YT.Player('youtubePlayer', {
+            height: '360',
+            width: '640',
+            videoId: videoId,
+            playerVars: {
+                'playsinline': 1,
+                'rel': 0,
+                'modestbranding': 1,
+                'controls': 1,
+                'enablejsapi': 1
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
+                'onError': onPlayerError
+            }
+        });
+        console.log('YouTube player created');
+    } catch (error) {
+        console.error('Error creating YouTube player:', error);
+    }
+}
+
+function onPlayerError(event) {
+    console.error('YouTube player error:', event.data);
+    const errorMessages = {
+        2: 'Invalid video ID',
+        5: 'HTML5 player error',
+        100: 'Video not found or private',
+        101: 'Video not allowed to be played in embedded players',
+        150: 'Video not allowed to be played in embedded players'
+    };
+    alert('YouTube Player Error: ' + (errorMessages[event.data] || 'Unknown error'));
+}
+
+function onPlayerReady(event) {
+    playerReady = true;
+    console.log('Player ready event fired, playerReady set to:', playerReady);
+    console.log('Player object:', youtubePlayer);
+}
+
+function onPlayerStateChange(event) {
+    // Monitor playback and stop at end time
+    if (event.data === YT.PlayerState.PLAYING) {
+        // Start tracking playback time
+        startPlaybackTimeTracking();
+
+        if (previewInterval) {
+            clearInterval(previewInterval);
+        }
+
+        previewInterval = setInterval(() => {
+            const currentTime = youtubePlayer.getCurrentTime();
+            if (currentTime >= previewEndTime) {
+                youtubePlayer.pauseVideo();
+                clearInterval(previewInterval);
+                previewInterval = null;
+            }
+        }, 100);
+    } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+        if (previewInterval) {
+            clearInterval(previewInterval);
+            previewInterval = null;
+        }
+        // Continue tracking time even when paused so user can set trim points
+    }
+}
+
+function getVideoIdFromUrl(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[?&]|$)/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})(?:[?&]|$)/
+    ];
+
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+function showPreview() {
+    const url = videoUrl.value.trim();
+    const videoId = getVideoIdFromUrl(url);
+
+    console.log('Show preview called for:', url);
+    console.log('Extracted video ID:', videoId);
+
+    if (!videoId) {
+        alert('Cannot extract video ID from URL');
+        return;
+    }
+
+    // Get current trim times
+    const startPercent = parseFloat(handleStart.style.left) || 0;
+    const endPercent = parseFloat(handleEnd.style.left) || 100;
+
+    previewStartTime = Math.floor((startPercent / 100) * videoDurationSeconds);
+    previewEndTime = Math.floor((endPercent / 100) * videoDurationSeconds);
+
+    console.log('Preview times:', previewStartTime, 'to', previewEndTime);
+
+    // Show preview container
+    videoPreviewContainer.classList.remove('hidden');
+
+    // Check if YouTube API is ready
+    if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
+        console.log('YouTube API not ready, waiting...');
+        const waitForAPI = setInterval(() => {
+            if (typeof YT !== 'undefined' && typeof YT.Player !== 'undefined') {
+                console.log('YouTube API now ready');
+                clearInterval(waitForAPI);
+                createPlayerAndPlay(videoId);
+            }
+        }, 100);
+        return;
+    }
+
+    createPlayerAndPlay(videoId);
+}
+
+function createPlayerAndPlay(videoId) {
+    // Initialize player if not exists
+    if (!youtubePlayer) {
+        console.log('Creating new player');
+        initializeYouTubePlayer(videoId);
+
+        // Wait for player to be ready, then play
+        let attempts = 0;
+        const checkReady = setInterval(() => {
+            attempts++;
+            if (playerReady) {
+                console.log('Player ready, starting playback');
+                clearInterval(checkReady);
+                playPreview();
+            } else if (attempts > 50) {
+                clearInterval(checkReady);
+                console.error('Player failed to initialize after 5 seconds');
+                alert('Failed to initialize video player. Please try again.');
+            }
+        }, 100);
+    } else {
+        console.log('Using existing player');
+        // Load new video if different
+        try {
+            const currentVideoData = youtubePlayer.getVideoData();
+            if (currentVideoData.video_id !== videoId) {
+                console.log('Loading different video:', videoId);
+                playerReady = false;
+                youtubePlayer.loadVideoById(videoId);
+                let attempts = 0;
+                const checkReady = setInterval(() => {
+                    attempts++;
+                    if (playerReady) {
+                        console.log('New video loaded and ready');
+                        clearInterval(checkReady);
+                        playPreview();
+                    } else if (attempts > 50) {
+                        clearInterval(checkReady);
+                        console.error('Failed to load new video');
+                    }
+                }, 100);
+            } else {
+                console.log('Same video, just playing');
+                playPreview();
+            }
+        } catch (error) {
+            console.error('Error checking video data:', error);
+            playPreview();
+        }
+    }
+}
+
+function playPreview() {
+    console.log('playPreview called, playerReady:', playerReady);
+    if (youtubePlayer && playerReady) {
+        console.log('Seeking to', previewStartTime, 'and playing');
+        youtubePlayer.seekTo(previewStartTime, true);
+        youtubePlayer.playVideo();
+
+        // Start tracking playback time
+        startPlaybackTimeTracking();
+    } else {
+        console.error('Cannot play: player not ready or not initialized');
+    }
+}
+
+function closePreview() {
+    videoPreviewContainer.classList.add('hidden');
+    if (youtubePlayer) {
+        youtubePlayer.pauseVideo();
+    }
+    if (previewInterval) {
+        clearInterval(previewInterval);
+        previewInterval = null;
+    }
+    stopPlaybackTimeTracking();
+}
+
+function startPlaybackTimeTracking() {
+    if (playbackTimeInterval) {
+        clearInterval(playbackTimeInterval);
+    }
+
+    playbackTimeInterval = setInterval(() => {
+        if (youtubePlayer && playerReady) {
+            try {
+                const currentTime = youtubePlayer.getCurrentTime();
+                const timeString = formatTime(currentTime);
+
+                if (currentPlaybackTime) {
+                    currentPlaybackTime.textContent = timeString;
+                }
+
+                if (playbackTimeOverlay) {
+                    playbackTimeOverlay.textContent = timeString;
+                }
+            } catch (error) {
+                console.error('Error getting current time:', error);
+            }
+        }
+    }, 100); // Update every 100ms for smooth display
+}
+
+function stopPlaybackTimeTracking() {
+    if (playbackTimeInterval) {
+        clearInterval(playbackTimeInterval);
+        playbackTimeInterval = null;
+    }
+}
+
+function setTrimStartPoint() {
+    if (!youtubePlayer || !playerReady) {
+        alert('Please wait for the video player to be ready');
+        return;
+    }
+
+    try {
+        const currentTime = youtubePlayer.getCurrentTime();
+        const percent = (currentTime / videoDurationSeconds) * 100;
+
+        // Make sure it doesn't go past the end handle
+        const endPercent = parseFloat(handleEnd.style.left) || 100;
+
+        if (percent < endPercent - 1) {
+            handleStart.style.left = percent + '%';
+            updateTimelineDisplay();
+
+            // Show visual feedback
+            showTrimPointSetFeedback(setStartPointBtn, 'Start');
+
+            console.log('Start point set to:', currentTime, 'seconds');
+        } else {
+            alert('Start point must be before the end point');
+        }
+    } catch (error) {
+        console.error('Error setting start point:', error);
+        alert('Failed to set start point');
+    }
+}
+
+function setTrimEndPoint() {
+    if (!youtubePlayer || !playerReady) {
+        alert('Please wait for the video player to be ready');
+        return;
+    }
+
+    try {
+        const currentTime = youtubePlayer.getCurrentTime();
+        const percent = (currentTime / videoDurationSeconds) * 100;
+
+        // Make sure it doesn't go before the start handle
+        const startPercent = parseFloat(handleStart.style.left) || 0;
+
+        if (percent > startPercent + 1) {
+            handleEnd.style.left = percent + '%';
+            updateTimelineDisplay();
+
+            // Show visual feedback
+            showTrimPointSetFeedback(setEndPointBtn, 'End');
+
+            console.log('End point set to:', currentTime, 'seconds');
+        } else {
+            alert('End point must be after the start point');
+        }
+    } catch (error) {
+        console.error('Error setting end point:', error);
+        alert('Failed to set end point');
+    }
+}
+
+function showTrimPointSetFeedback(button, pointType) {
+    // Add success animation
+    const originalText = button.innerHTML;
+
+    button.style.background = 'linear-gradient(135deg, #00c853 0%, #00a843 100%)';
+    button.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        ${pointType} Set!
+    `;
+
+    setTimeout(() => {
+        button.style.background = '';
+        button.innerHTML = originalText;
+    }, 1000);
+}
+
+// Preview event listeners
+previewBtn.addEventListener('click', showPreview);
+closePreviewBtn.addEventListener('click', closePreview);
+replayPreviewBtn.addEventListener('click', playPreview);
+setStartPointBtn.addEventListener('click', setTrimStartPoint);
+setEndPointBtn.addEventListener('click', setTrimEndPoint);
+
+// Keyboard shortcuts for trim points
+document.addEventListener('keydown', (e) => {
+    // Only work when preview is open and we're not typing in an input
+    if (videoPreviewContainer.classList.contains('hidden') ||
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA') {
+        return;
+    }
+
+    switch(e.key.toLowerCase()) {
+        case 'i':
+            e.preventDefault();
+            setTrimStartPoint();
+            break;
+        case 'o':
+            e.preventDefault();
+            setTrimEndPoint();
+            break;
+        case ' ':
+            e.preventDefault();
+            if (youtubePlayer && playerReady) {
+                const state = youtubePlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) {
+                    youtubePlayer.pauseVideo();
+                } else {
+                    youtubePlayer.playVideo();
+                }
+            }
+            break;
+    }
 });
 
 // Initialize
