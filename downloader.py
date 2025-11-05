@@ -29,7 +29,7 @@ class YouTubeDownloader:
         import base64
 
         # Method 1: Check for base64-encoded cookies in environment
-        cookies_env = os.environ.get('YOUTUBE_COOKIES_BASE64')
+        cookies_env = os.environ.get('YOUTUBE_COOKIES_BASE64') or os.environ.get('YT_COOKIES_B64')
         if cookies_env:
             try:
                 cookies_dir = Path(__file__).parent / 'cookies'
