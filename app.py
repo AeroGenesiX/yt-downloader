@@ -350,10 +350,10 @@ def start_download():
                 if not os.path.exists(filename):
                     logger.error(f"Download completed but file not found: {filename}")
                     # List files in download directory for debugging
-                    download_dir = Path(filename).parent
-                    if download_dir.exists():
-                        files = list(download_dir.glob('*'))
-                        logger.info(f"Files in {download_dir}: {files}")
+                    file_dir = Path(filename).parent
+                    if file_dir.exists():
+                        files = list(file_dir.glob('*'))
+                        logger.info(f"Files in {file_dir}: {files}")
                     raise Exception(f"Download completed but file not found: {filename}")
 
                 active_downloads[download_id].update({
